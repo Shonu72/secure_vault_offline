@@ -86,7 +86,7 @@ class PortfolioDashboard extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.primary),
             onPressed: () {
-              ref.read(lockScreenProvider.notifier).logout();
+              ref.read(lockScreenProvider.notifier).logout(isExplicit: true);
             },
           ),
         ],

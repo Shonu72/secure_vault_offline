@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:secure_vault_offline/core/theme.dart';
 import 'package:secure_vault_offline/features/auth/auth_provider.dart';
 import 'package:secure_vault_offline/core/constants.dart';
@@ -22,21 +23,38 @@ class _LockScreenState extends ConsumerState<LockScreen>
   void initState() {
     super.initState();
 
-    // Set up shake animation for incorrect PIN feedback
+    // Shake animation for wrong PIN
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _shakeAnimation =
-        Tween<double>(
-            begin: 0.0,
-            end: 20.0,
-          ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeController)
+        Tween<double>(begin: 0.0, end: 20.0)
+            .chain(CurveTween(curve: Curves.elasticIn))
+            .animate(_shakeController)
           ..addStatusListener((status) {
             if (status == AnimationStatus.completed) {
               _shakeController.reverse();
             }
           });
+
+    // Automatically trigger biometrics on first open if available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryAutoLaunchBiometrics();
+    });
+  }
+
+  Future<void> _tryAutoLaunchBiometrics() async {
+    // Only auto-launch if biometrics are enrolled on this device
+    final isAvailable = await ref.read(biometricAvailableProvider.future);
+    final lockState = ref.read(lockScreenProvider);
+    
+    // Skip auto-prompt if user explicitly clicked logout
+    if (lockState.wasLoggedOut) return;
+
+    if (isAvailable && mounted) {
+      await ref.read(lockScreenProvider.notifier).authenticateWithBiometrics();
+    }
   }
 
   @override
@@ -45,23 +63,14 @@ class _LockScreenState extends ConsumerState<LockScreen>
     super.dispose();
   }
 
-  void _triggerBiometrics() {
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Simulating biometric auth... Try PIN "1234"'),
-        duration: Duration(seconds: 2),
-        backgroundColor: AppColors.primaryDark,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final lockState = ref.watch(lockScreenProvider);
     final notifier = ref.read(lockScreenProvider.notifier);
+    final biometricAsync = ref.watch(biometricAvailableProvider);
+    final isBiometricAvailable = biometricAsync.value ?? false;
 
-    // Listen to shake trigger changes in state provider
+    // React to shake trigger from Riverpod state
     ref.listen<LockScreenState>(lockScreenProvider, (previous, next) {
       if (next.shouldShake && !(previous?.shouldShake ?? false)) {
         _shakeController.forward();
@@ -100,9 +109,12 @@ class _LockScreenState extends ConsumerState<LockScreen>
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  AppConstants.lockScreenSubtitle,
-                  style: TextStyle(
+                // Subtitle changes based on whether biometrics are available
+                Text(
+                  isBiometricAvailable
+                      ? 'Use fingerprint or enter your PIN'
+                      : AppConstants.lockScreenSubtitle,
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
                   ),
@@ -112,7 +124,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
 
             const Spacer(flex: 1),
 
-            // PIN Indicator Circles
+            // PIN Indicator Circles with shake animation
             AnimatedBuilder(
               animation: _shakeAnimation,
               builder: (context, child) {
@@ -129,21 +141,15 @@ class _LockScreenState extends ConsumerState<LockScreen>
                         height: 16,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isFilled
-                              ? AppColors.primary
-                              : AppColors.surface,
+                          color: isFilled ? AppColors.primary : AppColors.surface,
                           border: Border.all(
-                            color: isFilled
-                                ? AppColors.primary
-                                : AppColors.borderNormal,
+                            color: isFilled ? AppColors.primary : AppColors.borderNormal,
                             width: 1.5,
                           ),
                           boxShadow: isFilled
                               ? [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(
-                                      alpha: .4,
-                                    ),
+                                    color: AppColors.primary.withValues(alpha: .4),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   ),
@@ -166,35 +172,32 @@ class _LockScreenState extends ConsumerState<LockScreen>
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      '1',
-                      '2',
-                      '3',
-                    ].map((d) => _buildKeypadButton(d, notifier)).toList(),
+                    children: ['1', '2', '3']
+                        .map((d) => _buildKeypadButton(d, notifier))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: ['4', '5', '6']
+                        .map((d) => _buildKeypadButton(d, notifier))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: ['7', '8', '9']
+                        .map((d) => _buildKeypadButton(d, notifier))
+                        .toList(),
                   ),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      '4',
-                      '5',
-                      '6',
-                    ].map((d) => _buildKeypadButton(d, notifier)).toList(),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      '7',
-                      '8',
-                      '9',
-                    ].map((d) => _buildKeypadButton(d, notifier)).toList(),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildBiometricButton(),
+                      // Biometric button — real or empty placeholder
+                      isBiometricAvailable
+                          ? _buildBiometricButton(notifier, lockState)
+                          : const SizedBox(width: 72, height: 72),
                       _buildKeypadButton('0', notifier),
                       _buildBackspaceButton(notifier),
                     ],
@@ -251,19 +254,43 @@ class _LockScreenState extends ConsumerState<LockScreen>
     );
   }
 
-  Widget _buildBiometricButton() {
+  Widget _buildBiometricButton(LockScreenNotifier notifier, LockScreenState state) {
     return GestureDetector(
-      onTap: _triggerBiometrics,
+      onTap: state.isBiometricLoading ? null : notifier.authenticateWithBiometrics,
       child: Container(
         width: 72,
         height: 72,
-        decoration: const BoxDecoration(shape: BoxShape.circle),
-        alignment: Alignment.center,
-        child: const Icon(
-          Icons.fingerprint_rounded,
-          color: AppColors.primary,
-          size: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
         ),
+        alignment: Alignment.center,
+        child: state.isBiometricLoading
+            // Spinner while the biometric prompt is open
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              )
+            // Show fingerprint or face icon based on enrolled type
+            : FutureBuilder<List<BiometricType>>(
+                future: LocalAuthentication().getAvailableBiometrics(),
+                builder: (context, snapshot) {
+                  final types = snapshot.data ?? [];
+                  final hasFace = types.contains(BiometricType.face);
+                  return Icon(
+                    hasFace ? Icons.face_retouching_natural : Icons.fingerprint_rounded,
+                    color: AppColors.primary,
+                    size: 32,
+                  );
+                },
+              ),
       ),
     );
   }

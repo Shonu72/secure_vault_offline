@@ -1,5 +1,7 @@
 package com.example.secure_vault_offline
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// local_auth requires FlutterFragmentActivity (not FlutterActivity)
+// because biometric prompts use AndroidX Fragment under the hood.
+class MainActivity : FlutterFragmentActivity()
