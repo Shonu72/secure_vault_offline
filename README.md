@@ -69,10 +69,11 @@ If you're a recruiter or senior dev reading this:
 - **Error handling in the real world** — The macOS keychain entitlement issue is a real developer problem. Instead of giving up or commenting it out, I built a graceful fallback.
 
 ## Snapshots
-<img width="1206" height="2622" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-04 at 19 12 19" src="https://github.com/user-attachments/assets/4177f0f4-bb24-4099-a344-094e61f930b1" />
-<img width="1206" height="2622" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-04 at 19 12 11" src="https://github.com/user-attachments/assets/bc4c2eac-0aa5-4da7-b294-d71f7abf4bdf" />
-<img width="1206" height="2622" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-04 at 19 10 50" src="https://github.com/user-attachments/assets/5243ca4a-2c2a-4bb9-a48d-e147f92c7ff4" />
-<img width="1206" height="2622" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-04 at 19 10 35" src="https://github.com/user-attachments/assets/4c728aa7-05c3-4d79-8175-3ffa13cb5946" />
 
-
-
+<p align="center">
+ 
+  <img src="https://github.com/user-attachments/assets/4c728aa7-05c3-4d79-8175-3ffa13cb5946" width="23%" alt="Lock Screen" />
+  <img src="https://github.com/user-attachments/assets/5243ca4a-2c2a-4bb9-a48d-e147f92c7ff4" width="23%" alt="Add Asset" />
+   <img src="https://github.com/user-attachments/assets/bc4c2eac-0aa5-4da7-b294-d71f7abf4bdf" width="23%" alt="Portfolio Dashboard" />
+  <img src="https://github.com/user-attachments/assets/4177f0f4-bb24-4099-a344-094e61f930b1" width="23%" alt="Transactions" />
+</p>
