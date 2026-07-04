@@ -4,6 +4,7 @@ import 'package:secure_vault_offline/core/theme.dart';
 import 'package:secure_vault_offline/core/database/secure_database.dart';
 import 'package:secure_vault_offline/features/auth/auth_provider.dart';
 import 'package:secure_vault_offline/features/asset_entry/add_asset_page.dart';
+import 'package:secure_vault_offline/core/network/api_client.dart';
 
 class PortfolioDashboard extends ConsumerWidget {
   const PortfolioDashboard({super.key});
@@ -49,6 +50,39 @@ class PortfolioDashboard extends ConsumerWidget {
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         actions: [
+          GestureDetector(
+            onTap: () {
+              final isForced = ref.read(forceOfflineProvider);
+              ref.read(forceOfflineProvider.notifier).state = !isForced;
+            },
+            child: Consumer(
+              builder: (context, ref, child) {
+                final isForced = ref.watch(forceOfflineProvider);
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isForced ? Colors.red.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isForced ? Colors.red : AppColors.primary,
+                      width: 1.0,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    isForced ? 'Offline Mode' : 'Online',
+                    style: TextStyle(
+                      color: isForced ? Colors.red : AppColors.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.primary),
             onPressed: () {

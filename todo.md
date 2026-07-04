@@ -36,9 +36,9 @@ Link your UI views directly to local SQLite reactive database streams.
 
 ## 🔄 Phase 4: Sync Engine & Network Interceptor
 Set up the offline replication queue and automated retry loop.
-- [ ] Write the `HmacSigningInterceptor` in `lib/core/network/api_client.dart` to sign outgoing REST writes.
-- [ ] Build `MockSyncQueueInterceptor` to catch timeout/connectivity issues, cache them to the local `sync_queue` table, and returns a `222/202 Accepted` response.
-- [ ] Build the background `SyncEngine` that listens to `connectivity_plus` streams, grabs queued transactions, and uploads them using an **exponential backoff + jitter** retry pattern when connection is active.
+- [x] Write the `HmacSigningInterceptor` in `lib/core/network/api_client.dart` to sign outgoing REST writes.
+- [x] Build `MockSyncQueueInterceptor` to catch timeout/connectivity issues, cache them to the local `sync_queue` table, and returns a `222/202 Accepted` response.
+- [x] Build the background `SyncEngine` that listens to `connectivity_plus` streams, grabs queued transactions, and uploads them using an **exponential backoff + jitter** retry pattern when connection is active.
 
 ---
 
