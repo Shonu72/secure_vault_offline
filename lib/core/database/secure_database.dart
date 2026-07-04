@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
+import 'package:flutter/foundation.dart';
 
 part 'secure_database.g.dart';
 
@@ -217,3 +218,65 @@ final transactionsStreamProvider = StreamProvider<List<TransactionEntity>>((ref)
   return db.watchTransactions();
 });
 
+// ── XIRR ISOLATE PROVIDER ──────────────────────────────────────────────────────
+// Watches the transaction stream and re-calculates XIRR off the UI thread
+// every time the database list changes.
+final xirrProvider = FutureProvider.autoDispose<double>((ref) async {
+  final txList = await ref.watch(transactionsStreamProvider.future);
+
+  if (txList.length < 2) return 0.0;
+
+  // Build cash flow list — buys are negative outflows, sells are positive inflows
+  final cashFlows = txList.map((tx) {
+    final isBuy = tx.transactionType == 'buy';
+    final cashAmount = isBuy 
+        ? -(tx.amount * tx.price)  // Money leaving your wallet
+        :  (tx.amount * tx.price); // Money entering your wallet
+    return (amount: cashAmount, date: DateTime.fromMillisecondsSinceEpoch(tx.timestamp));
+  }).toList();
+
+  // Sort chronologically (XIRR requires chronological order)
+  cashFlows.sort((a, b) => a.date.compareTo(b.date));
+
+  // Add a synthetic "current value" positive cash flow at today's date
+  // This represents the mark-to-market value if you liquidated today
+  double currentMarketValue = 0.0;
+  for (final tx in txList) {
+    currentMarketValue += tx.amount * tx.price;
+  }
+  cashFlows.add((amount: currentMarketValue, date: DateTime.now()));
+
+  // Run Newton-Raphson on a background isolate — never blocks the UI thread
+  return compute(_xirrTopLevel, cashFlows.map((e) => [e.amount, e.date.millisecondsSinceEpoch.toDouble()]).toList());
+});
+
+// Top-level function required by compute() — isolates cannot use closures
+double _xirrTopLevel(List<List<double>> rawFlows) {
+  if (rawFlows.isEmpty) return 0.0;
+
+  final firstDate = rawFlows.first[1];
+  const double tolerance = 1e-7;
+  const int maxIterations = 200;
+  double rate = 0.1;
+
+  for (int i = 0; i < maxIterations; i++) {
+    double npv = 0.0;
+    double dnpv = 0.0;
+
+    for (final flow in rawFlows) {
+      final amount = flow[0];
+      final t = (flow[1] - firstDate) / (365 * 24 * 3600 * 1000.0);
+      final d = pow(1 + rate, t);
+      npv += amount / d;
+      dnpv -= (t * amount) / (d * (1 + rate));
+    }
+
+    if (dnpv.abs() < 1e-12) break;
+    final newRate = rate - npv / dnpv;
+    if ((newRate - rate).abs() < tolerance) return newRate;
+    rate = newRate;
+    if (rate < -0.999) rate = -0.999;
+  }
+
+  return rate;
+}

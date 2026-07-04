@@ -152,78 +152,90 @@ class PortfolioDashboard extends ConsumerWidget {
                   ),
                 ),
 
-                // Annualized Return (XIRR) Info Card
+                // Annualized Return (XIRR) Info Card  — computed on background isolate
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final xirrAsync = ref.watch(xirrProvider);
+                            final xirr = xirrAsync.value ?? 0.0;
+                            final xirrPercent = (xirr * 100);
+                            final isPositive = xirr >= 0;
+
+                            return Column(
                               children: [
-                                const Text(
-                                  'Annualized Return (XIRR)',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: 0.2),
-                                      width: 1,
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Annualized Return (XIRR)',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        netProfitLoss >= 0
-                                            ? Icons.trending_up_rounded
-                                            : Icons.trending_down_rounded,
-                                        color: netProfitLoss >= 0 ? AppColors.primary : AppColors.borderError,
-                                        size: 14,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${profitLossPercentage.toStringAsFixed(1)}%',
-                                        style: TextStyle(
-                                          color: netProfitLoss >= 0 ? AppColors.primary : AppColors.borderError,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    // Isolate computation state indicator
+                                    xirrAsync.isLoading
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: AppColors.primary,
+                                            ),
+                                          )
+                                        : Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: (isPositive ? AppColors.primary : AppColors.borderError)
+                                                  .withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: (isPositive ? AppColors.primary : AppColors.borderError)
+                                                    .withValues(alpha: 0.3),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                                                  color: isPositive ? AppColors.primary : AppColors.borderError,
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '${isPositive ? "+" : ""}${xirrPercent.toStringAsFixed(2)}% p.a.',
+                                                  style: TextStyle(
+                                                    color: isPositive ? AppColors.primary : AppColors.borderError,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                const Divider(),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    _buildDetailColumn('Total Value', '\$${totalBalance.toStringAsFixed(2)}'),
+                                    Container(height: 30, width: 1, color: AppColors.borderNormal),
+                                    _buildDetailColumn('Invested Amount', '\$${investedAmount.toStringAsFixed(2)}'),
+                                  ],
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 20),
-                            const Divider(),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildDetailColumn('Total Value', '\$${totalBalance.toStringAsFixed(2)}'),
-                                Container(
-                                  height: 30,
-                                  width: 1,
-                                  color: AppColors.borderNormal,
-                                ),
-                                _buildDetailColumn('Invested Amount', '\$${investedAmount.toStringAsFixed(2)}'),
-                              ],
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -245,10 +257,13 @@ class PortfolioDashboard extends ConsumerWidget {
                   ),
                 ),
 
-                // Transactions List (using SliverList for performance)
+                // Transactions List — SliverFixedExtentList for O(1) layout
+                // itemExtent pins each card to exactly 92px tall, enabling Flutter
+                // to skip measure passes entirely, even with 10,000+ items.
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  sliver: SliverList(
+                  sliver: SliverFixedExtentList(
+                    itemExtent: 92.0, // Pre-budgeted card height (padding 12 + card 80)
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final tx = txList[index];
@@ -288,6 +303,7 @@ class PortfolioDashboard extends ConsumerWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
                                         '${isBuy ? "Bought" : "Sold"} ${_getAssetName(tx.holdingId, holdingsList)}',
@@ -296,6 +312,8 @@ class PortfolioDashboard extends ConsumerWidget {
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -312,6 +330,7 @@ class PortfolioDashboard extends ConsumerWidget {
                                 // Amounts
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
                                       '${isBuy ? "+" : "-"} ${tx.amount.toStringAsFixed(4)}',

@@ -42,8 +42,8 @@ Set up the offline replication queue and automated retry loop.
 
 ---
 
-## ⚡ Phase 5: Thread Isolation & Performance Tuning
+## ⚡ Phase 5: Thread Isolation & Performance Tuning ✅
 Tune the CPU and rendering pipeline for heavy loads.
-- [ ] Offload the compound interest return calculations (XIRR) to a secondary background thread using Dart's `compute()` isolate helper.
-- [ ] Wire the isolate return rate value to update the portfolio statistics card.
-- [ ] Verify list scrolling layout passes: populate 10,000 mock items to check `itemExtent` performance in DevTools.
+- [x] Offload the compound interest return calculations (XIRR) to a secondary background thread using Dart's `compute()` isolate helper.
+- [x] Wire the isolate return rate value to update the portfolio statistics card.
+- [x] Verify list scrolling layout passes: populate 10,000 mock items to check `itemExtent` performance in DevTools.
