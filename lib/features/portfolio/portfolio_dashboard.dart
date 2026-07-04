@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:secure_vault_offline/core/theme.dart';
 import 'package:secure_vault_offline/features/auth/auth_provider.dart';
+import 'package:secure_vault_offline/features/asset_entry/add_asset_page.dart';
 
 class TransactionItem {
   final String title;
@@ -368,6 +369,15 @@ class PortfolioDashboard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddAssetPage()),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
