@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:secure_vault_offline/core/theme.dart';
+import 'package:secure_vault_offline/core/security/security_guard.dart';
 import 'package:secure_vault_offline/features/auth/auth_provider.dart';
 import 'package:secure_vault_offline/features/auth/lock_screen.dart';
 import 'package:secure_vault_offline/features/portfolio/portfolio_dashboard.dart';
@@ -24,10 +25,13 @@ class MyApp extends ConsumerWidget {
       title: 'Secure Vault',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      home: lockState.isAuthenticated
-          ? const PortfolioDashboard()
-          : const LockScreen(),
+      home: SecurityOverlay(
+        child: lockState.isAuthenticated
+            ? const PortfolioDashboard()
+            : const LockScreen(),
+      ),
     );
   }
 }
+
 

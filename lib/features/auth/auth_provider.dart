@@ -88,3 +88,6 @@ class LockScreenNotifier extends StateNotifier<LockScreenState> {
 final lockScreenProvider = StateNotifierProvider<LockScreenNotifier, LockScreenState>((ref) {
   return LockScreenNotifier();
 });
+
+final privacyShieldProvider = StateProvider<bool>((ref) => false);
+
