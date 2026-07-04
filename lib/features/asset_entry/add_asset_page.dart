@@ -1,8 +1,11 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:secure_vault_offline/core/constants.dart';
 import 'package:secure_vault_offline/core/theme.dart';
+import 'package:secure_vault_offline/core/widgets.dart';
 
 // ── Models & State ────────────────────────────────────────────────────────────
 class FormFieldSchema {
@@ -84,7 +87,7 @@ class DynamicFormNotifier extends StateNotifier<DynamicFormState> {
     final updatedValues = Map<String, String>.from(state.values);
     updatedValues[fieldId] = value;
 
-    // Trigger validation logic for modified field
+    // Validate only this specific field on keypress to minimize latency
     final updatedErrors = Map<String, String?>.from(state.errors);
     final fieldSchema = fields.firstWhere((f) => f.id == fieldId);
     updatedErrors[fieldId] = _validateField(fieldSchema, value);
@@ -121,7 +124,6 @@ class DynamicFormNotifier extends StateNotifier<DynamicFormState> {
     bool isValid = true;
 
     for (final field in fields) {
-      // Skip validating if field is hidden by condition
       if (!_isFieldVisible(field)) continue;
 
       final val = state.values[field.id] ?? '';
@@ -172,7 +174,6 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
 
   Future<void> _loadSchemaFromAssets() async {
     try {
-      // Load and parse dynamic form schema config from local file assets
       final jsonString = await rootBundle.loadString('assets/form_schema.json');
       final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
       final List<dynamic> fieldsList = jsonMap['fields'] as List;
@@ -182,15 +183,13 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
         _isLoading = false;
       });
 
-      // Populate default state values (crypto default selected)
       ref.read(dynamicFormStateProvider(_fields).notifier).initForm({
         'asset_type': 'crypto',
         'asset_name': 'Bitcoin (BTC)',
-        'wallet_address': '0x1A2B3C', // Pre-populated to trigger validation warning in mockup
+        'wallet_address': '0x1A2B3C',
         'network': 'Ethereum ERC-20',
       });
     } catch (e) {
-      // In case bundle fails (e.g. during fresh setup tests), fall back to memory schema
       _loadFallbackSchema();
     }
   }
@@ -270,7 +269,7 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
       );
       Navigator.pop(context);
     } else {
-      HapticFeedback.vibrate(); // error feedback
+      HapticFeedback.vibrate();
     }
   }
 
@@ -284,9 +283,6 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
       );
     }
 
-    final formState = ref.watch(dynamicFormStateProvider(_fields));
-    final notifier = ref.read(dynamicFormStateProvider(_fields).notifier);
-
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0.0,
@@ -296,7 +292,7 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Add Asset',
+          AppConstants.addAssetTitle,
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
@@ -315,7 +311,8 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+        // Responsive page padding matching device sizes (Mobile vs Tablet vs Web)
+        padding: context.responsivePadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -329,55 +326,72 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
             ),
             const SizedBox(height: 24),
 
-            // Render all dynamically visible form fields
+            // Map each dynamic field into its own optimized individual rebuild widget
             ..._fields.map((field) {
-              // Check visibility condition rule
-              final isVisible = notifier._isFieldVisible(field);
-              if (!isVisible) return const SizedBox.shrink();
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
-                child: _buildFormField(field, formState, notifier),
+              return DynamicFormField(
+                field: field,
+                allFields: _fields,
               );
             }),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
 
-            // Add Asset Primary Action Button
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E286F), // Deep blue theme button in mockup
-                  foregroundColor: AppColors.textPrimary,
-                ),
-                onPressed: _onSave,
-                child: const Text(
-                  'Add Asset',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
+            // Styled reusable AppButton
+            AppButton(
+              text: 'Add Asset',
+              backgroundColor: const Color(0xFF1E286F), // Custom dark blue style
+              textColor: AppColors.textPrimary,
+              onPressed: _onSave,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildFormField(
-    FormFieldSchema field,
-    DynamicFormState state,
+// ── Performance Optimized Rebuild Scoped Field Widget ──────────────────────────
+class DynamicFormField extends ConsumerWidget {
+  final FormFieldSchema field;
+  final List<FormFieldSchema> allFields;
+
+  const DynamicFormField({
+    super.key,
+    required this.field,
+    required this.allFields,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(dynamicFormStateProvider(allFields).notifier);
+
+    // 1. Evaluate Visibility dynamically
+    final isVisible = notifier._isFieldVisible(field);
+    if (!isVisible) return const SizedBox.shrink();
+
+    // 2. PERFORMANCE OPTIMIZATION: Scoped provider selectors
+    // Only rebuild this specific widget when its OWN value or error changes.
+    // Typing in field A does NOT trigger rebuilds of field B or C anymore!
+    final value = ref.watch(dynamicFormStateProvider(allFields).select((s) => s.values[field.id] ?? ''));
+    final error = ref.watch(dynamicFormStateProvider(allFields).select((s) => s.errors[field.id]));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: _buildInputControl(context, value, error, notifier),
+    );
+  }
+
+  Widget _buildInputControl(
+    BuildContext context,
+    String value,
+    String? error,
     DynamicFormNotifier notifier,
   ) {
-    final value = state.values[field.id] ?? '';
-    final error = state.errors[field.id];
-
     switch (field.type) {
       case 'dropdown':
         final options = field.options ?? [];
         return DropdownButtonFormField<String>(
-          value: value.isEmpty ? null : value,
+          initialValue: value.isEmpty ? null : value,
           dropdownColor: AppColors.surface,
           decoration: InputDecoration(
             labelText: field.label,
@@ -400,7 +414,6 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
       case 'text':
       case 'numeric':
       default:
-        // Use local TextEditingController dynamically to prevent rebuilding on every keystroke
         return TextFormField(
           initialValue: value,
           keyboardType: field.type == 'numeric' ? TextInputType.number : TextInputType.text,

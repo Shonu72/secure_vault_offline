@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:secure_vault_offline/core/theme.dart';
 import 'package:secure_vault_offline/features/auth/auth_provider.dart';
+import 'package:secure_vault_offline/core/constants.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({super.key});
@@ -91,7 +92,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Enter Secure PIN',
+                  AppConstants.lockScreenTitle,
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 20,
@@ -100,7 +101,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Verify identity to access vault',
+                  AppConstants.lockScreenSubtitle,
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,

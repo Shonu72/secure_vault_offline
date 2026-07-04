@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:secure_vault_offline/core/constants.dart';
 
 class LockScreenState {
   final String pin;
@@ -30,7 +31,7 @@ class LockScreenNotifier extends StateNotifier<LockScreenState> {
   LockScreenNotifier() : super(const LockScreenState());
 
   static const int _maxPinLength = 4;
-  static const String _correctPin = '1234';
+  static const String _correctPin = AppConstants.defaultPinSeed;
 
   void addDigit(String digit) {
     if (state.pin.length >= _maxPinLength || state.shouldShake) return;
