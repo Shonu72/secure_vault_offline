@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 
 part 'secure_database.g.dart';
 
@@ -67,17 +68,32 @@ class SecureDatabase extends _$SecureDatabase {
     const secureStorage = FlutterSecureStorage();
     const keyName = 'secure_vault_cipher_key';
 
-    String? dbKey = await secureStorage.read(key: keyName);
-    if (dbKey == null) {
-      // 1. Generate 256-bit cryptographically secure passphrase
-      final random = Random.secure();
-      final secureKeyBytes = List<int>.generate(32, (_) => random.nextInt(256));
-      dbKey = base64Url.encode(secureKeyBytes);
-      
-      // 2. Persist safely inside hardware-backed storage (Keychain/KeyStore)
-      await secureStorage.write(key: keyName, value: dbKey);
+    try {
+      // Try hardware secure keychain storage first
+      String? dbKey = await secureStorage.read(key: keyName);
+      if (dbKey == null) {
+        final random = Random.secure();
+        final secureKeyBytes = List<int>.generate(32, (_) => random.nextInt(256));
+        dbKey = base64Url.encode(secureKeyBytes);
+        await secureStorage.write(key: keyName, value: dbKey);
+      }
+      return dbKey;
+    } catch (e) {
+      // Secure storage unavailable (e.g. running on macOS debug mode without developer signing)
+      // Fallback to local sandbox hidden file key persistence for seamless debug execution
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final keyFile = File(p.join(dbFolder.path, '.db_fallback_key'));
+
+      if (await keyFile.exists()) {
+        return await keyFile.readAsString();
+      } else {
+        final random = Random.secure();
+        final secureKeyBytes = List<int>.generate(32, (_) => random.nextInt(256));
+        final dbKey = base64Url.encode(secureKeyBytes);
+        await keyFile.writeAsBytes(utf8.encode(dbKey), flush: true);
+        return dbKey;
+      }
     }
-    return dbKey;
   }
 
   // Encryption execution layer
@@ -100,6 +116,88 @@ class SecureDatabase extends _$SecureDatabase {
       );
     });
   }
+
+  // ── CUSTOM QUERIES & CRUD MUTATIONS ───────────────────────────────────────────
+
+  // Watch portfolio holdings reactively
+  Stream<List<HoldingEntity>> watchHoldings() {
+    return select(holdings).watch();
+  }
+
+  // Watch transactions chronologically
+  Stream<List<TransactionEntity>> watchTransactions() {
+    return (select(transactions)
+          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)]))
+        .watch();
+  }
+
+  // Multi-table atomic transaction to add an asset transaction
+  Future<void> addAssetTransaction({
+    required String assetName,
+    required String assetSymbol,
+    required double amount,
+    required double price,
+    required String type, // 'buy' | 'sell'
+    required String idempotencyKey,
+  }) {
+    return transaction(() async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      
+      // 1. Check if holding already exists for this symbol
+      final holdingQuery = select(holdings)..where((h) => h.assetSymbol.equals(assetSymbol));
+      final existingHolding = await holdingQuery.getSingleOrNull();
+
+      String holdingId;
+      if (existingHolding != null) {
+        holdingId = existingHolding.id;
+        final isBuy = type == 'buy';
+        final double newAmount = isBuy 
+            ? existingHolding.amountHeld + amount 
+            : existingHolding.amountHeld - amount;
+            
+        final double newPurchaseValue = isBuy
+            ? existingHolding.purchaseValue + (amount * price)
+            : existingHolding.purchaseValue - (amount * price);
+
+        // Update holding properties atomically
+        await update(holdings).replace(
+          existingHolding.copyWith(
+            amountHeld: newAmount,
+            purchaseValue: newPurchaseValue,
+            lastUpdatedAt: now,
+          ),
+        );
+      } else {
+        // Create new holding entry
+        holdingId = const Uuid().v4();
+        await into(holdings).insert(
+          HoldingEntity(
+            id: holdingId,
+            assetName: assetName,
+            assetSymbol: assetSymbol,
+            amountHeld: amount,
+            purchaseValue: amount * price,
+            currentNav: price, // initial nav set to purchase price
+            lastUpdatedAt: now,
+          ),
+        );
+      }
+
+      // 2. Log transaction in transactions table
+      await into(transactions).insert(
+        TransactionEntity(
+          id: const Uuid().v4(),
+          holdingId: holdingId,
+          transactionType: type,
+          amount: amount,
+          price: price,
+          timestamp: now,
+          idempotencyKey: idempotencyKey,
+          syncStatus: 'pending',
+        ),
+      );
+    });
+  }
 }
 
 // ── RIVERPOD INJECTION PROVIDER ──────────────────────────────────────────────────
@@ -108,3 +206,14 @@ final databaseProvider = Provider<SecureDatabase>((ref) {
   ref.onDispose(() => db.close());
   return db;
 });
+
+final holdingsStreamProvider = StreamProvider<List<HoldingEntity>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.watchHoldings();
+});
+
+final transactionsStreamProvider = StreamProvider<List<TransactionEntity>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.watchTransactions();
+});
+

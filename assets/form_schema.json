@@ -1,0 +1,67 @@
+{
+  "fields": [
+    {
+      "id": "asset_name",
+      "type": "text",
+      "label": "Asset Name",
+      "placeholder": "e.g. Bitcoin (BTC)",
+      "required": true
+    },
+    {
+      "id": "asset_type",
+      "type": "dropdown",
+      "label": "Asset Type",
+      "required": true,
+      "options": [
+        {"label": "Crypto", "value": "crypto"},
+        {"label": "Fixed Deposit", "value": "fd"},
+        {"label": "Stocks", "value": "stocks"}
+      ]
+    },
+    {
+      "id": "wallet_address",
+      "type": "text",
+      "label": "Wallet Address",
+      "placeholder": "Enter crypto wallet address",
+      "required": true,
+      "visibilityCondition": {
+        "fieldId": "asset_type",
+        "equals": "crypto"
+      },
+      "validation": {
+        "regex": "^0x[a-fA-F0-9]{40}$",
+        "errorMessage": "Invalid Wallet Address"
+      }
+    },
+    {
+      "id": "network",
+      "type": "dropdown",
+      "label": "Network (optional)",
+      "options": [
+        {"label": "Ethereum ERC-20", "value": "Ethereum ERC-20"},
+        {"label": "Bitcoin Network", "value": "Bitcoin Network"},
+        {"label": "Solana SPL", "value": "Solana SPL"}
+      ]
+    },
+    {
+      "id": "memo",
+      "type": "text",
+      "label": "Memo (optional)",
+      "placeholder": "Memo"
+    },
+    {
+      "id": "amount",
+      "type": "numeric",
+      "label": "Amount / Units",
+      "placeholder": "e.g. 0.05",
+      "required": true
+    },
+    {
+      "id": "price",
+      "type": "numeric",
+      "label": "Purchase Price (USD)",
+      "placeholder": "e.g. 35000",
+      "required": true
+    }
+  ]
+}

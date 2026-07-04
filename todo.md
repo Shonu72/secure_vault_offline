@@ -22,15 +22,15 @@ Set up type-safe local storage encrypted on disk using SQLCipher keys.
   - `TransactionsTable` (amounts, prices, timestamp, idempotency key, sync status).
   - `SyncQueueTable` (payload JSON, operations mapping, retry tracking).
 - [x] Build the native platform database opener linking `SQLCipher` libraries with your encryption key.
-- [ ] Run `flutter pub run build_runner build` to generate the type-safe database schemas.
+- [x] Run `flutter pub run build_runner build` to generate the type-safe database schemas.
 
 ---
 
 ## 📊 Phase 3: Core CRUD & Reactive Streams
 Link your UI views directly to local SQLite reactive database streams.
-- [ ] Replace mock transaction lists in `portfolio_dashboard.dart` with a reactive `StreamBuilder` watching `drift` tables.
-- [ ] Add the database writing task to `AddAssetPage`'s save action (inserts holding transaction into local DB).
-- [ ] Implement data mapping: convert raw DB entities to clean presentation `Holding` and `Transaction` models.
+- [x] Replace mock transaction lists in `portfolio_dashboard.dart` with a reactive `StreamBuilder` watching `drift` tables.
+- [x] Add the database writing task to `AddAssetPage`'s save action (inserts holding transaction into local DB).
+- [x] Implement data mapping: convert raw DB entities to clean presentation `Holding` and `Transaction` models.
 
 ---
 

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:secure_vault_offline/core/constants.dart';
 import 'package:secure_vault_offline/core/theme.dart';
 import 'package:secure_vault_offline/core/widgets.dart';
+import 'package:secure_vault_offline/core/database/secure_database.dart';
+import 'package:uuid/uuid.dart';
 
 // ── Models & State ────────────────────────────────────────────────────────────
 class FormFieldSchema {
@@ -242,6 +244,20 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
         label: 'Memo (optional)',
         placeholder: 'Memo',
       ),
+      FormFieldSchema(
+        id: 'amount',
+        type: 'numeric',
+        label: 'Amount / Units',
+        placeholder: 'e.g. 0.05',
+        required: true,
+      ),
+      FormFieldSchema(
+        id: 'price',
+        type: 'numeric',
+        label: 'Purchase Price (USD)',
+        placeholder: 'e.g. 35000',
+        required: true,
+      ),
     ];
 
     setState(() {
@@ -254,20 +270,68 @@ class _AddAssetPageState extends ConsumerState<AddAssetPage> {
       'asset_name': 'Bitcoin (BTC)',
       'wallet_address': '0x1A2B3C',
       'network': 'Ethereum ERC-20',
+      'amount': '0.0051',
+      'price': '38921.50',
     });
   }
 
-  void _onSave() {
+  Future<void> _onSave() async {
     HapticFeedback.mediumImpact();
     final notifier = ref.read(dynamicFormStateProvider(_fields).notifier);
     if (notifier.validateAll()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Asset Saved Successfully!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-      Navigator.pop(context);
+      final formState = ref.read(dynamicFormStateProvider(_fields));
+      final db = ref.read(databaseProvider);
+
+      final assetName = formState.values['asset_name'] ?? 'Asset';
+      final amount = double.tryParse(formState.values['amount'] ?? '') ?? 1.0;
+      final price = double.tryParse(formState.values['price'] ?? '') ?? 100.0;
+
+      // Deduce a symbol dynamically based on the input name
+      String symbol = 'ASSET';
+      if (assetName.toLowerCase().contains('bitcoin') || assetName.toLowerCase().contains('btc')) {
+        symbol = 'BTC';
+      } else if (assetName.toLowerCase().contains('ethereum') || assetName.toLowerCase().contains('eth')) {
+        symbol = 'ETH';
+      } else if (assetName.toLowerCase().contains('tesla')) {
+        symbol = 'TSLA';
+      } else if (assetName.toLowerCase().contains('apple')) {
+        symbol = 'AAPL';
+      } else {
+        symbol = assetName.split(' ').map((s) => s.isNotEmpty ? s[0] : '').join().toUpperCase();
+        if (symbol.isEmpty) symbol = 'AST';
+      }
+
+      final idempotencyKey = const Uuid().v4();
+
+      try {
+        await db.addAssetTransaction(
+          assetName: assetName,
+          assetSymbol: symbol,
+          amount: amount,
+          price: price,
+          type: 'buy',
+          idempotencyKey: idempotencyKey,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Asset Saved Successfully!'),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Database Error: $e'),
+              backgroundColor: AppColors.borderError,
+            ),
+          );
+        }
+      }
     } else {
       HapticFeedback.vibrate();
     }
