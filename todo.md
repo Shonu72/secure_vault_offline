@@ -16,12 +16,12 @@ Implement OS-level lifecycle defenses to protect database secrets and UI visibil
 
 ## 🗄️ Phase 2: Encrypted Local Database (SQLCipher & Drift)
 Set up type-safe local storage encrypted on disk using SQLCipher keys.
-- [ ] Initialize `flutter_secure_storage` to generate/fetch a cryptographically secure 256-bit DB passphrase key.
-- [ ] Configure `drift` schema tables inside `lib/core/database/secure_database.dart`:
+- [x] Initialize `flutter_secure_storage` to generate/fetch a cryptographically secure 256-bit DB passphrase key.
+- [x] Configure `drift` schema tables inside `lib/core/database/secure_database.dart`:
   - `HoldingsTable` (asset name, symbol, quantities, purchase value, current NAV).
   - `TransactionsTable` (amounts, prices, timestamp, idempotency key, sync status).
   - `SyncQueueTable` (payload JSON, operations mapping, retry tracking).
-- [ ] Build the native platform database opener linking `SQLCipher` libraries with your encryption key.
+- [x] Build the native platform database opener linking `SQLCipher` libraries with your encryption key.
 - [ ] Run `flutter pub run build_runner build` to generate the type-safe database schemas.
 
 ---
