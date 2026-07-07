@@ -2,6 +2,17 @@
 
 A Flutter app I built from scratch to practice real-world system design concepts — specifically how to keep sensitive financial data safe, work perfectly without internet, and still sync everything when the connection comes back.
 
+## Snapshots
+
+<p align="center">
+ 
+  <img src="https://github.com/user-attachments/assets/4c728aa7-05c3-4d79-8175-3ffa13cb5946" width="23%" alt="Lock Screen" />
+  <img src="https://github.com/user-attachments/assets/5243ca4a-2c2a-4bb9-a48d-e147f92c7ff4" width="23%" alt="Add Asset" />
+   <img src="https://github.com/user-attachments/assets/bc4c2eac-0aa5-4da7-b294-d71f7abf4bdf" width="23%" alt="Portfolio Dashboard" />
+  <img src="https://github.com/user-attachments/assets/4177f0f4-bb24-4099-a344-094e61f930b1" width="23%" alt="Transactions" />
+</p>
+
+
 > This isn't a tutorial follow-along. Every decision here was made by designing the system first, then implementing it steps by steps.
 
 ---
@@ -68,12 +79,3 @@ If you're a recruiter or senior dev reading this:
 - **Performance thinking** — XIRR runs on a background isolate. The list uses fixed-extent virtualization. These aren't premature optimizations — they're the right call for a finance app with potentially thousands of rows.
 - **Error handling in the real world** — The macOS keychain entitlement issue is a real developer problem. Instead of giving up or commenting it out, I built a graceful fallback.
 
-## Snapshots
-
-<p align="center">
- 
-  <img src="https://github.com/user-attachments/assets/4c728aa7-05c3-4d79-8175-3ffa13cb5946" width="23%" alt="Lock Screen" />
-  <img src="https://github.com/user-attachments/assets/5243ca4a-2c2a-4bb9-a48d-e147f92c7ff4" width="23%" alt="Add Asset" />
-   <img src="https://github.com/user-attachments/assets/bc4c2eac-0aa5-4da7-b294-d71f7abf4bdf" width="23%" alt="Portfolio Dashboard" />
-  <img src="https://github.com/user-attachments/assets/4177f0f4-bb24-4099-a344-094e61f930b1" width="23%" alt="Transactions" />
-</p>
